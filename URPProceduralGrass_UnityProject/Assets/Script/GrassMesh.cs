@@ -44,8 +44,9 @@ namespace URPProceduralGrass
                 13, 14, 12
             };
 
-            // r 表示草的实际高度
-            // g 表示左右
+            // 如图 VertexColor 所示
+            // r 表示草的高度比例 01 范围
+            // g 表示左右宽带比例 01 范围，最左为 0，最右为 1
             mesh.colors = new Color[]
             {
                 new Color(0.141177f,0.000000f,0.000000f,1.000000f),
@@ -61,8 +62,8 @@ namespace URPProceduralGrass
                 new Color(0.713726f,1.000000f,0.000000f,1.000000f),
                 new Color(0.713726f,0.000000f,0.000000f,1.000000f),
                 new Color(0.858824f,1.000000f,0.000000f,1.000000f),
-                new Color(0.858824f,0.600000f,0.000000f,1.000000f),
-                new Color(1.000000f,0.498039f,0.000000f,1.000000f)
+                new Color(0.858824f,0.000000f,0.000000f,1.000000f),
+                new Color(1.000000f,0.498039f,0.000000f,1.000000f) // 应该 g = 0.5
             };
 
             mesh.uv = new Vector2[]
@@ -81,7 +82,7 @@ namespace URPProceduralGrass
                 new Vector2(0.466167f,0.784132f),
                 new Vector2(0.525474f,0.890497f),
                 new Vector2(0.475053f,0.890497f),
-                new Vector2(0.500264f,1.000000f)
+                new Vector2(0.500264f,1.000000f) // 应该 u = 0.5
             };
             
             mesh.RecalculateBounds();
