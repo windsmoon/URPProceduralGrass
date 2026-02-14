@@ -7,8 +7,15 @@
         _Tilt("Tilt", Range(0, 1)) = 1 // 草尖到地面的高度/草长，其实控制的是草尖到底部的倾斜程度，如图 Tilt 所示
         _BladeWidth("Blade Width", Float) = 0.1 // 草叶的底部宽度
         _TaperAmount("Taper Amount", Range(0, 1)) = 0 // 随着高度升高，宽度值的衰减
+        _CurvedNormalAmount("Curved Normal Amount", Range(0, 5)) = 1 // 两侧法线向外延申的程度
         _P1Offset("P1 Offset", Float) = 0
         _P2Offset("P2 Offset", Float) = 0
+        
+        [Header(Shading)]
+        _TopColor("Top Color", Color) = (0.25, 0.5, 0.5, 1)
+        _BottomColor("Top Color", Color) = (0.25, 0.5, 0.5, 1)
+        _GrassAlbedo("Grass Albedo", 2D) = "white" {}
+        _GrassGloss("Grass Gloss", 2D) = "white" {}
     }
     SubShader
     {
@@ -24,6 +31,10 @@
             HLSLPROGRAM
             #pragma prefer_hlslcc gles
             #pragma exclude_renderers d3d11_9x
+
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile _ _SHADOWS_SOFT
+            
             #pragma vertex vert
             #pragma fragment frag
 
@@ -36,8 +47,16 @@
             float _Tilt;
             float _BladeWidth;
             float _TaperAmount;
+            float _CurvedNormalAmount;
             float _P1Offset;
             float _P2Offset;
+
+            float4 _TopColor;
+            float4 _BottomColor;
+            TEXTURE2D(_GrassAlbedo);
+            SAMPLER(sampler_GrassAlbedo);
+            TEXTURE2D(_GrassGloss);
+            SAMPLER(sampler_GrassGloss);
             
             struct Attributes
             {
@@ -49,8 +68,11 @@
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
-                float3 normal   : TEXCOORD0;
-                float3 positionWS : TEXCOORD1;
+                float3 positionWS : TEXCOORD0;
+                float3 curvedNormalWS : TEXCOORD1;
+                float3 originalNormalWS : TEXCOORD2;
+                float2 uv : TEXCOORD03;
+                float t : TEXCOORD4;
             };
 
             // 如图 Tilt 所示
@@ -99,27 +121,48 @@
                 float3 tangent = CubicBezierTanget(p0, p1, p2, p3, t);
                 float3 normal = normalize(cross(tangent, float3(0, 0, 1)));
 
+                float3 curvedNormal = normal;
+                curvedNormal.z += side * _CurvedNormalAmount;
+                curvedNormal = normalize(curvedNormal);
+                
                 output.positionCS = TransformObjectToHClip(vertexPos);
-                output.normal = TransformObjectToWorldNormal(normal);
+                output.curvedNormalWS = TransformObjectToWorldNormal(curvedNormal);
+                output.originalNormalWS = TransformObjectToWorldNormal(normal);
                 output.positionWS = TransformObjectToWorld(vertexPos);
+                output.uv = input.texcoord;
+                output.t = t;
                 
                 return output;
             }
             
-            half4 frag(Varyings input) : SV_Target
+            half4 frag(Varyings input, bool isFrontFace : SV_IsFrontFace) : SV_Target
             {
-                Light mainLight = GetMainLight();
-                float3 N = normalize(input.normal);
-                float3 L = normalize(mainLight.direction);
-                float3 V = normalize(GetCameraPositionWS() - input.positionWS);
-                float3 H = normalize(L + V);
-                
-                float3 diffuse = saturate(dot(N, L));
-                float3 spec = pow(saturate(dot(N, H)), 128) * mainLight.color;
-                half3 ambient = SampleSH(N) * 0.1;
-                half3 lighting = ambient + mainLight.color * diffuse * half3(0, 1, 0) + spec * half3(1, 1, 1);
+                // 草叶模型是单个面片，所以背面要镜像一下法线
+                // 参考图 Mesh
+                float3 n = isFrontFace ? normalize(input.curvedNormalWS) : -reflect(-normalize(input.curvedNormalWS), normalize(input.originalNormalWS));                
 
-                return half4(lighting, 1.0);
+                Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
+                float3 viewDir = normalize(GetCameraPositionWS() - input.positionWS);
+
+                float3 grasAlbedo = saturate(_GrassAlbedo.Sample(sampler_GrassAlbedo, input.uv));
+                float4 grassColor = lerp(_BottomColor, _TopColor, input.t);
+                float3 albedo = grassColor.rgb * grasAlbedo;
+                float gloss = (1 - _GrassGloss.Sample(sampler_GrassGloss, input.uv).r) * 0.2;
+                half3 gi = SampleSH(n);
+
+
+                // 没有贴图
+                float smoothness = 0.5;
+                
+                half nDotL = saturate(dot(n, mainLight.direction));
+                BRDFData brdfData;
+                half alpha = 1;
+                InitializeBRDFData(albedo, 0, half3(1, 1, 1), smoothness, alpha, brdfData);
+                float3 directBrdfColor = DirectBDRF(brdfData, n, mainLight.direction, viewDir, false) * mainLight.color * nDotL;
+                float3 finalColor = gi * albedo + directBrdfColor * (mainLight.shadowAttenuation * mainLight.distanceAttenuation);
+
+                float4 color = float4(finalColor, grassColor.a);
+                return color;
             }
             ENDHLSL
         }

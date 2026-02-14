@@ -8,6 +8,7 @@ namespace URPProceduralGrass
         public static Mesh CreateHighLODMesh()
         {
             Mesh mesh = new Mesh();
+            // 草叶处于 YZ 平面
             mesh.vertices = new Vector3[]
             {
                 new Vector3(0.000000f, 0.15599f, 0.03445f),
@@ -27,6 +28,7 @@ namespace URPProceduralGrass
                 new Vector3(0.000000f, 0.70819f, 0.00000f)
             };
 
+            // 左右两侧以面向 X 轴负方向看为基准
             mesh.triangles = new int[]
             {
                 0, 1, 2,
