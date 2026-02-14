@@ -28,6 +28,7 @@
             #pragma fragment frag
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             #include "CubicBezier.hlsl"
             
@@ -48,6 +49,8 @@
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
+                float3 normal   : TEXCOORD0;
+                float3 positionWS : TEXCOORD1;
             };
 
             // 如图 Tilt 所示
@@ -93,14 +96,30 @@
                 float side = input.color.g * 2 - 1;
                 float3 vertexPos = centerPos + float3(0, 0, side * width);
 
+                float3 tangent = CubicBezierTanget(p0, p1, p2, p3, t);
+                float3 normal = normalize(cross(tangent, float3(0, 0, 1)));
+
                 output.positionCS = TransformObjectToHClip(vertexPos);
+                output.normal = TransformObjectToWorldNormal(normal);
+                output.positionWS = TransformObjectToWorld(vertexPos);
                 
                 return output;
             }
             
             half4 frag(Varyings input) : SV_Target
             {
-                return half4(0.0, 1.0, 0.0, 1.0);
+                Light mainLight = GetMainLight();
+                float3 N = normalize(input.normal);
+                float3 L = normalize(mainLight.direction);
+                float3 V = normalize(GetCameraPositionWS() - input.positionWS);
+                float3 H = normalize(L + V);
+                
+                float3 diffuse = saturate(dot(N, L));
+                float3 spec = pow(saturate(dot(N, H)), 128) * mainLight.color;
+                half3 ambient = SampleSH(N) * 0.1;
+                half3 lighting = ambient + mainLight.color * diffuse * half3(0, 1, 0) + spec * half3(1, 1, 1);
+
+                return half4(lighting, 1.0);
             }
             ENDHLSL
         }

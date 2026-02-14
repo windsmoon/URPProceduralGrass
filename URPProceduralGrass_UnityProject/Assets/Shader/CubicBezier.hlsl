@@ -24,4 +24,17 @@ float3 CubicBezier2(float3 p0, float3 p1, float3 p2, float3 p3, float t)
     return lerp(d, e, t);
 }
 
+float3 CubicBezierTanget(float3 p0, float3 p1, float3 p2, float3 p3, float t)
+{
+    float omt = 1 - t;
+    float omt2 = omt * omt;
+    float t2 = t * t;
+    // 这是提取了公约数 3，实际上是 1/3 倍的切线
+    float3 tangent = p0 * -omt2 +
+        p1 * (3 * omt2 - 2 * omt) +
+            p2 * (-3 * t2 + 2 * t) +
+                p3 * t2;
+    return normalize(tangent);
+}
+
 #endif
