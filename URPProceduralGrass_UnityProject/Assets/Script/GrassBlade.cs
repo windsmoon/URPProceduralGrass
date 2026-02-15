@@ -21,10 +21,6 @@ namespace URPProceduralGrass
             meshFilter.mesh = clonedMesh;
             meshRenderer.material = _material;
         }
-
-        private void Update()
-        {
-        }
         #endregion
     }
 }
