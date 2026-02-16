@@ -1,4 +1,4 @@
-﻿#pragma kerner GrassGenerator
+﻿#pragma kernel GrassGenerator
 
 struct GrassBlade
 {
@@ -23,7 +23,7 @@ void GrassGenerator(uint3 id : SV_DispatchThreadID)
     if (id.x  < _Resolution && id.y < _Resolution)
     {
         float3 position = float3(id.x, 0, id.y) * _GrassSpacing;
-        float2 hash = HashFloat2(position.xy);
+        float2 hash = HashFloat2(position.xz);
         float2 jitterPos = (hash * 2 - 1) * _PositionJitterStrength;
         position.xz += jitterPos;
         

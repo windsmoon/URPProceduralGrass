@@ -105,13 +105,19 @@ namespace URPProceduralGrass
             _meshPositionsBuffer = CreateBuffer<Vector3>(vertices, sizeof(float) * 3);
             _meshColorsBuffer = CreateBuffer<Color>(colors, sizeof(float) * 4);
             _meshUvsBuffer = CreateBuffer<Vector2>(uvs, sizeof(float) * 2);
+            
+            _material.SetBuffer("_Triangles", _meshTrianglesBuffer);
+            // _material.SetBuffer("Positions", _meshPositionsBuffer);
+            _material.SetBuffer("_Colors", _meshColorsBuffer);
+            _material.SetBuffer("_Uvs", _meshUvsBuffer);
+            _material.SetBuffer(s_grassBladesBufferId, _grassBladesBuffer);
         }
 
         private void RenderGrass()
         {
             ComputeBuffer.CopyCount(_grassBladesBuffer, _argsBuffer, sizeof(int));
             Graphics.DrawProceduralIndirect(_material, _bounds, MeshTopology.Triangles, _argsBuffer,
-                0, _camera, null, ShadowCastingMode.Off, true, gameObject.layer);
+                0, null, null, ShadowCastingMode.Off, true, gameObject.layer);
         }
         
         private void DisposeBuffers()

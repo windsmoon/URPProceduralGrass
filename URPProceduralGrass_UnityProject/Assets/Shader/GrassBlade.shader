@@ -42,6 +42,16 @@
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             #include "CubicBezier.hlsl"
+
+            struct GrassBlade
+            {
+                float3 position;
+            };
+
+            StructuredBuffer<GrassBlade> _GrassBlades;
+            StructuredBuffer<int> _Triangles;
+            StructuredBuffer<float4> _Colors;
+            StructuredBuffer<float2> _Uvs;
             
             float _Height;
             float _Tilt;
@@ -60,9 +70,8 @@
             
             struct Attributes
             {
-                float4 positionOS : POSITION;
-                float2 color : COLOR;
-                float2 texcoord : TEXCOORD0;
+                uint VertexID : SV_VertexID;
+                uint instanceID : SV_InstanceID;
             };
 
             struct Varyings
@@ -111,12 +120,17 @@
                 float3 p2 = float3(0, 0, 0);
                 GetP1P2(p0, p3, p1, p2);
 
+                int vertexIndex = _Triangles[input.VertexID];
+                float4 vertexColor = _Colors[vertexIndex];
+                float2 uv = _Uvs[vertexIndex];
+                GrassBlade grassBlade = _GrassBlades[input.instanceID];
+
                 // 如图 VertexColor 所示
-                float t = input.color.r;
+                float t = vertexColor.r;
                 float3 centerPos = CubicBezier(p0, p1, p2, p3, t);
                 float width = _BladeWidth * (1 - _TaperAmount * t);
-                float side = input.color.g * 2 - 1;
-                float3 vertexPos = centerPos + float3(0, 0, side * width);
+                float side = vertexColor.g * 2 - 1;
+                float3 positionWS = grassBlade.position + centerPos + float3(0, 0, side * width);
 
                 float3 tangent = CubicBezierTanget(p0, p1, p2, p3, t);
                 float3 normal = normalize(cross(tangent, float3(0, 0, 1)));
@@ -125,11 +139,11 @@
                 curvedNormal.z += side * _CurvedNormalAmount;
                 curvedNormal = normalize(curvedNormal);
                 
-                output.positionCS = TransformObjectToHClip(vertexPos);
-                output.curvedNormalWS = TransformObjectToWorldNormal(curvedNormal);
-                output.originalNormalWS = TransformObjectToWorldNormal(normal);
-                output.positionWS = TransformObjectToWorld(vertexPos);
-                output.uv = input.texcoord;
+                output.positionCS = TransformWorldToHClip(positionWS);
+                output.curvedNormalWS = curvedNormal;
+                output.originalNormalWS = normal;
+                output.positionWS = positionWS;
+                output.uv = uv;
                 output.t = t;
                 
                 return output;
