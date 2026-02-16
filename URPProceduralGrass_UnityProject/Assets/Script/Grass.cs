@@ -12,13 +12,16 @@ namespace URPProceduralGrass
         private float _grassSpacing = 0.1f;
         [SerializeField]
         private int _resolution = 100;
+        [SerializeField, Range(0, 2)]
+        private float _positionJitterStrength;
 
         private ComputeBuffer _grassBladesBuffer;
 
         private static readonly int
             s_grassBladesBufferId = Shader.PropertyToID("_GrassBlades"),
             s_resolutionId = Shader.PropertyToID("_Resolution"),
-            s_grassSpacingId = Shader.PropertyToID("_GrassSpacing");
+            s_grassSpacingId = Shader.PropertyToID("_GrassSpacing"),
+            s_positionJitterStrengthId = Shader.PropertyToID("_PositionJitterStrength");
 
         #endregion
 
@@ -65,7 +68,7 @@ namespace URPProceduralGrass
                 _grassBladesBuffer = null;
             }
         }
-
+   
         private void UpdateGpuBuffer()
         {
             _grassBladesBuffer.SetCounterValue(0);
@@ -80,6 +83,7 @@ namespace URPProceduralGrass
             _computeShader.SetInt(s_resolutionId, _resolution);
             _computeShader.SetBuffer(0, s_grassBladesBufferId, _grassBladesBuffer);
             _computeShader.SetFloat(s_grassSpacingId, _grassSpacing);
+            _computeShader.SetFloat(s_positionJitterStrengthId, _positionJitterStrength);
         }
         #endregion
     }

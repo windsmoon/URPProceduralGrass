@@ -1,14 +1,21 @@
 ﻿#pragma kerner GrassGenerator
 
-uint _Resolution;
-float _GrassSpacing;
-
 struct GrassBlade
 {
     float3 position;
 };
 
 AppendStructuredBuffer<GrassBlade> _GrassBlades;
+uint _Resolution;
+float _GrassSpacing;
+float _PositionJitterStrength;
+
+float2 HashFloat2(float2 position)
+{
+    float t = dot(position, float2(12.9898, 78.223));
+    float2 q = float2(t, t * 1.61803398875);
+    return frac(sin(q) * 43758.5453);
+}
 
 [numthreads(8, 8, 1)]
 void GrassGenerator(uint3 id : SV_DispatchThreadID)
@@ -16,6 +23,9 @@ void GrassGenerator(uint3 id : SV_DispatchThreadID)
     if (id.x  < _Resolution && id.y < _Resolution)
     {
         float3 position = float3(id.x, 0, id.y) * _GrassSpacing;
+        float2 hash = HashFloat2(position.xy);
+        float2 jitterPos = (hash * 2 - 1) * _PositionJitterStrength;
+        position.xz += jitterPos;
         
         GrassBlade blade;
         blade.position = position;
